@@ -3,6 +3,7 @@
 import sys
 import os.path
 import json
+import hashlib
 import logging
 import argparse
 
@@ -11,38 +12,20 @@ LOGGER = logging.getLogger(__name__)
 
 
 CONSTANTS = '''
-location = /v2 {
+location = /v2 {{
     return 301 /v2/;
-}
+}}
 
-location = /v2/ {
+location = /v2/ {{
     return 200 'ok';
-}
-'''
+}}
 
-
-def manifests_location(server_root, name_prefix):
-   return '''
 location @404_tag {{
     internal;
     types {{ }} default_type "application/json";
     return 404 '{tag_invalid:s}';
 }}
-
-location ~ "/v2/{name_prefix:s}(.*)/manifests/(.*)" {{
-    # `$http_accept` is only the *first* `Accept` header :-/
-    #if ($http_accept !~* "application/vnd.docker.distribution.manifest.v2+json") {{
-    #    return 406;
-    #}}
-
-    alias {server_root:s}/;
-    types {{ }} default_type "application/vnd.docker.distribution.manifest.v2+json";
-    try_files $1/$2/manifest.json =404;
-    error_page 404 @404_tag;
-}}
 '''.format(
-        server_root=server_root,
-        name_prefix=name_prefix.lstrip('/'),
         tag_invalid=json.dumps({
             'errors': [{
                 'code': 'TAG_INVALID',
@@ -108,13 +91,11 @@ def find_images(root):
 def create_config(root, server_root, name_prefix):
     yield CONSTANTS
 
-    yield manifests_location(server_root, name_prefix)
-
     images = {}
     for (name, tag) in find_images(root):
         images.setdefault(name, set()).add(tag)
 
-    for (name, tags) in images.items():
+    for (name, tags) in sorted(images.items()):
         tag_list = {
             'name': name,
             'tags': sorted(tags),
@@ -130,6 +111,61 @@ location = /v2/{name_prefix:s}{name:s}/tags/list {{
         name_prefix=name_prefix.lstrip('/'),
         payload=json.dumps(tag_list),
     )
+
+        seen_digests = set()
+
+        for tag in sorted(tags):
+            manifest_file = os.path.join(root, name, tag, MANIFEST_JSON)
+
+            digest = hashlib.sha256()
+
+            with open(manifest_file, 'rb') as fd:
+                for chunk in iter(lambda: fd.read(4096), b''):
+                    digest.update(chunk)
+
+            hexdigest = digest.hexdigest()
+
+            yield '''
+location = "/v2/{name_prefix:s}{name:s}/manifests/{tag:s}" {{
+    alias {server_root:s}/{name:s}/{tag:s}/;
+    types {{ }} default_type "application/vnd.docker.distribution.manifest.v2+json";
+    add_header 'Docker-Content-Digest' 'sha256:{digest:s}';
+    try_files manifest.json =404;
+    error_page 404 @404_tag;
+}}
+'''.format(
+        name=name,
+        tag=tag,
+        name_prefix=name_prefix.lstrip('/'),
+        digest=hexdigest,
+        server_root=server_root,
+    )
+
+            if hexdigest not in seen_digests:
+                yield '''
+location = "/v2/{name_prefix:s}{name:s}/manifests/sha256:{digest:s}" {{
+    alias {server_root:s}/{name:s}/{tag:s}/;
+    types {{ }} default_type "application/vnd.docker.distribution.manifest.v2+json";
+    add_header 'Docker-Content-Digest' 'sha256:{digest:s}';
+    try_files manifest.json =404;
+    error_page 404 @404_tag;
+}}
+'''.format(
+        name=name,
+        tag=tag,
+        name_prefix=name_prefix.lstrip('/'),
+        digest=hexdigest,
+        server_root=server_root,
+    )
+            else:
+                yield '''
+# Digest for "{name:s}:{tag:s}" already served
+'''.format(
+        name=name,
+        tag=tag,
+    )
+
+            seen_digests.add(hexdigest)
 
         yield '''
 location ~ "/v2/{name_prefix:s}{name:s}/blobs/sha256:([a-f0-9]{{64}})" {{
