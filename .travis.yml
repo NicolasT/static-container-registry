@@ -12,8 +12,8 @@ addons:
         key_url: 'https://pgrange.github.io/bash-unit_deb/keys.asc'
     packages:
       - bash-unit
+      - cri-o-1.12
       - hardlink
-      - skopeo
 
 before_install:
   - ./ci/before-install.sh
