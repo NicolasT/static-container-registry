@@ -78,10 +78,10 @@ All that's left to be done is firing up `nginx` with the configuration
 
 Using Docker
 ------------
-A Docker container image for this project is automatically built [on DockerHub]
-(https://hub.docker.com/r/nicolast/static-container-registry). To use this
-image, first create a directory containing all required image blobs (see
-above), then run
+A Docker container image for this project is automatically built
+[on DockerHub](https://hub.docker.com/r/nicolast/static-container-registry).
+To use this image, first create a directory containing all required image blobs
+(see above), then run
 
 ```
 $ docker run \
