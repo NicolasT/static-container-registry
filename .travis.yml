@@ -12,6 +12,7 @@ addons:
         key_url: 'https://pgrange.github.io/bash-unit_deb/keys.asc'
     packages:
       - bash-unit
+      - hardlink
       - skopeo
 
 before_install:

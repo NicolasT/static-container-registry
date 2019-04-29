@@ -1,5 +1,5 @@
-static-oci-registry
-===================
+static-container-registry
+=========================
 This is a set of scripts to create a Docker-compatible read-only 'registry' that
 can be served by a static Nginx HTTP server, without the need to run a
 full-fledged registry solution.

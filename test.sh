@@ -4,6 +4,7 @@ DOCKER=${DOCKER:-$(command -v docker)}
 SKOPEO=${SKOPEO:-$(command -v skopeo)}
 CRICTL=${CRICTL:-$(command -v crictl)}
 CURL=${CURL:-$(command -v curl)}
+HARDLINK=${HARDLINK:-$(command -v hardlink)}
 IMAGE=${IMAGE:-nicolast/static-container-registry:test}
 IMAGES=/tmp/images
 CONTAINER_NAME=static-container-registry-test
@@ -95,6 +96,8 @@ create_images_directory() {
         $SKOPEO copy --format v2s2 --dest-compress \
                 docker://docker.io/nicolast/metalk8s-keepalived:latest \
                 "dir:$IMAGES/metalk8s-keepalived/latest"
+
+        $HARDLINK -c -vv "${IMAGES}"
 }
 
 remove_images_directory() {
