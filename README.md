@@ -31,7 +31,7 @@ In the example above, we pulled Alpine 3.9(.3) twice. As a result, the same
 files are now stored multiple files on the system. If many of your images use
 the same base image(s), this can quickly add up. Luckily, there's an easy way to
 reduce this overhead since these files are always immutable: use hardlinks!
-There's a tool which does exactly this, aptly names `hardlink`:
+There's a tool which does exactly this, aptly called `hardlink`:
 
 ```
 $ hardlink -c -vv images
@@ -75,6 +75,28 @@ The following options are available:
 
 All that's left to be done is firing up `nginx` with the configuration
 `include`d.
+
+Using Docker
+------------
+A Docker container image for this project is automatically built [on DockerHub]
+(https://hub.docker.com/r/nicolast/static-container-registry). To use this
+image, first create a directory containing all required image blobs (see
+above), then run
+
+```
+$ docker run \
+    --name static-oci-registry \
+    -p 127.0.0.1:80:80 \
+    --mount type=bind,source=/absolute/path/to/images,destination=/var/lib/images,ro \
+    --rm \
+    --read-only \
+    --mount type=tmpfs,destination=/run \
+    --mount type=tmpfs,destination=/var/cache/nginx \
+    docker.io/nicolast/static-container-registry:latest
+```
+
+Make sure to replace the path to the `images`, which should be exposed at
+`/var/lib/images` to the container.
 
 Goals and non-goals
 -------------------
