@@ -2,8 +2,8 @@
 
 set -xue -o pipefail
 
-curl -LO https://github.com/containerd/containerd/releases/download/v1.2.4/containerd-1.2.4.linux-amd64.tar.gz
-tar xvf containerd-1.2.4.linux-amd64.tar.gz
+curl -LO https://github.com/containerd/containerd/releases/download/v1.2.6/containerd-1.2.6.linux-amd64.tar.gz
+tar xvf containerd-1.2.6.linux-amd64.tar.gz
 sudo mv bin/* /usr/bin/
 
 cat << EOF | sudo tee /etc/systemd/system/containerd.service
