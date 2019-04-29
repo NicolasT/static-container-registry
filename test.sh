@@ -3,6 +3,7 @@
 DOCKER=${DOCKER:-$(command -v docker)}
 SKOPEO=${SKOPEO:-$(command -v skopeo)}
 CRICTL=${CRICTL:-$(command -v crictl)}
+CURL=${CURL:-$(command -v curl)}
 IMAGE=${IMAGE:-nicolast/static-container-registry:test}
 IMAGES=/tmp/images
 CONTAINER_NAME=static-container-registry-test
@@ -48,6 +49,18 @@ setup() {
                 -v "$IMAGES:/var/lib/images:ro" \
                 --name "$CONTAINER_NAME" \
                 "$IMAGE" > /dev/null
+
+        local i=100
+        while [ $i -gt 0 ]; do
+                local ok
+                ok=$($CURL --silent http://$REGISTRY/v2/ 2>/dev/null)
+                if [ "x$ok" = 'xok' ]; then
+                        i=0
+                else
+                        sleep 0.1
+                        i=$((i - 1))
+                fi
+        done
 }
 
 teardown() {
