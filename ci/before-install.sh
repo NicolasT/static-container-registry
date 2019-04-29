@@ -14,7 +14,7 @@ After=network.target
 
 [Service]
 ExecStartPre=-/sbin/modprobe overlay
-ExecStart=/usr/bin/containerd --log-level debug
+ExecStart=/usr/bin/containerd
 
 Delegate=yes
 KillMode=process
@@ -39,7 +39,7 @@ cat << EOF | sudo tee /etc/containerd/config.toml
   [plugins.cri]
     [plugins.cri.registry]
       [plugins.cri.registry.mirrors]
-        [plugins.cri.registry.mirrors."127.0.0.1"]
+        [plugins.cri.registry.mirrors."127.0.0.1:5000"]
           endpoint = ["http://127.0.0.1:5000"]
 EOF
 

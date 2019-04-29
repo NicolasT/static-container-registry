@@ -17,12 +17,9 @@ test_docker() {
         done
 }
 
-# containerd relies on the `Docker-Content-Digest` header...
-todo_containerd() {
+test_containerd() {
         for image in ${AVAILABLE_IMAGES[*]}; do
-                sudo ${CRICTL} --image-endpoint unix:///run/containerd/containerd.sock pull "$REGISTRY_HOST/$image"
-                sudo journalctl -u containerd
-                assert false
+                assert "sudo ${CRICTL} --image-endpoint unix:///run/containerd/containerd.sock pull '$REGISTRY/$image'"
         done
 }
 
