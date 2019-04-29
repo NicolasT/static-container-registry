@@ -84,3 +84,10 @@ This does not necessarily imply all subtle details of the distribution API,
 including error reporting, are fully implemented.
 
 This tool does not, and will never, support uploads (`push`) of new images.
+
+Thanks
+------
+- [@mtrmac](https://github.com/mtrmac) for hinting at using the `dir` target of
+  `skopeo` in
+  [#469](https://github.com/containers/skopeo/issues/469#issuecomment-465353019)
+- [@rhatdan](https://github.com/rhatdan) and the `skopeo` team for `skopeo`
