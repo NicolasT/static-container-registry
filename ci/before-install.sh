@@ -2,9 +2,15 @@
 
 set -xue -o pipefail
 
+curl -LO https://launchpad.net/~projectatomic/+archive/ubuntu/ppa/+files/skopeo_0.1.36-1~dev~ubuntu16.04.2~ppa16_amd64.deb
+dpkg -x skopeo_0.1.36-1~dev~ubuntu16.04.2~ppa16_amd64.deb skopeo/
+sudo cp skopeo/usr/bin/skopeo /usr/local/bin/skopeo
+rm -r skopeo skopeo_0.1.36-1~dev~ubuntu16.04.2~ppa16_amd64.deb
+
 curl -LO https://github.com/containerd/containerd/releases/download/v1.2.6/containerd-1.2.6.linux-amd64.tar.gz
 tar xvf containerd-1.2.6.linux-amd64.tar.gz
 sudo mv bin/* /usr/bin/
+rm containerd-1.2.6.linux-amd64.tar.gz
 
 cat << EOF | sudo tee /etc/systemd/system/containerd.service
 [Unit]
@@ -44,6 +50,8 @@ cat << EOF | sudo tee /etc/containerd/config.toml
 EOF
 
 sudo systemctl start containerd
+
+sudo systemctl start crio
 
 curl -LO https://github.com/kubernetes-sigs/cri-tools/releases/download/v1.14.0/crictl-v1.14.0-linux-amd64.tar.gz
 tar xvf crictl-v1.14.0-linux-amd64.tar.gz crictl

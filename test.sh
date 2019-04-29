@@ -24,6 +24,12 @@ test_containerd() {
         done
 }
 
+test_crio() {
+        for image in ${AVAILABLE_IMAGES[*]}; do
+                assert "sudo ${CRICTL} --image-endpoint unix:///run/crio/crio.sock pull '$REGISTRY/$image'"
+        done
+}
+
 test_skopeo() {
         for image in ${AVAILABLE_IMAGES[*]}; do
                 assert "$SKOPEO --debug inspect --tls-verify=false 'docker://$REGISTRY/$image'"
