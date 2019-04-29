@@ -3,6 +3,7 @@
 DOCKER=${DOCKER:-$(command -v docker)}
 SKOPEO=${SKOPEO:-$(command -v skopeo)}
 CRICTL=${CRICTL:-$(command -v crictl)}
+CURL=${CURL:-$(command -v curl)}
 HARDLINK=${HARDLINK:-$(command -v hardlink)}
 IMAGE=${IMAGE:-nicolast/static-container-registry:test}
 IMAGES=/tmp/images
@@ -17,12 +18,9 @@ test_docker() {
         done
 }
 
-# containerd relies on the `Docker-Content-Digest` header...
-todo_containerd() {
+test_containerd() {
         for image in ${AVAILABLE_IMAGES[*]}; do
-                sudo ${CRICTL} --image-endpoint unix:///run/containerd/containerd.sock pull "$REGISTRY_HOST/$image"
-                sudo journalctl -u containerd
-                assert false
+                assert "sudo ${CRICTL} --image-endpoint unix:///run/containerd/containerd.sock pull '$REGISTRY/$image'"
         done
 }
 
@@ -49,6 +47,18 @@ setup() {
                 -v "$IMAGES:/var/lib/images:ro" \
                 --name "$CONTAINER_NAME" \
                 "$IMAGE" > /dev/null
+
+        local i=100
+        while [ $i -gt 0 ]; do
+                local ok
+                ok=$($CURL --silent http://$REGISTRY/v2/ 2>/dev/null)
+                if [ "x$ok" = 'xok' ]; then
+                        i=0
+                else
+                        sleep 0.1
+                        i=$((i - 1))
+                fi
+        done
 }
 
 teardown() {
