@@ -88,8 +88,9 @@ def find_images(root):
             yield (name, tag)
 
 
-def create_config(root, server_root, name_prefix):
-    yield CONSTANTS
+def create_config(root, server_root, name_prefix, with_constants=True):
+    if with_constants:
+        yield CONSTANTS
 
     images = {}
     for (name, tag) in find_images(root):
@@ -191,6 +192,12 @@ def main():
         metavar='PREFIX',
         help='optional prefix added to every image name',
     )
+    parser.add_argument(
+        '--omit-constants',
+        action='store_true',
+        help='do not write rules for constant locations (e.g. /v2/),' \
+                ' necessary to include the configuration with others.',
+    )
 
     root = os.getcwd()
     parser.add_argument(
@@ -211,6 +218,7 @@ def main():
     args = parser.parse_args()
 
     name_prefix = '{}/'.format((args.name_prefix or '').strip('/'))
+    with_constants = not args.omit_constants
     root = os.path.abspath(args.root)
     server_root = args.server_root or root
 
@@ -218,7 +226,7 @@ def main():
     logging.debug('Server root: %s', server_root)
     logging.debug('Root: %s', root)
 
-    for part in create_config(root, server_root, name_prefix):
+    for part in create_config(root, server_root, name_prefix, with_constants):
         sys.stdout.write(part)
 
 
