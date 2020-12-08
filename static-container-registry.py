@@ -107,12 +107,13 @@ def create_config(root, server_root, name_prefix, with_constants=True,
         }
 
         yield '''
-location = /v2/{name_prefix:s}{name:s}/tags/list {{
+location = /v2/{name_prefix:s}{sname:s}/tags/list {{
     types {{ }} default_type "application/json";
     return 200 '{payload:s}';
 }}
 '''.format(
         name=name,
+        sname=name.replace(":","/"),
         name_prefix=name_prefix.lstrip('/'),
         payload=json.dumps(tag_list),
     )
@@ -131,7 +132,7 @@ location = /v2/{name_prefix:s}{name:s}/tags/list {{
             hexdigest = digest.hexdigest()
 
             yield '''
-location = "/v2/{name_prefix:s}{name:s}/manifests/{tag:s}" {{
+location = "/v2/{name_prefix:s}{sname:s}/manifests/{tag:s}" {{
     alias {server_root:s}/{name:s}/{tag:s}/;
     types {{ }} default_type "application/vnd.docker.distribution.manifest.v2+json";
     add_header 'Docker-Content-Digest' 'sha256:{digest:s}';
@@ -140,6 +141,7 @@ location = "/v2/{name_prefix:s}{name:s}/manifests/{tag:s}" {{
 }}
 '''.format(
         name=name,
+        sname=name.replace(":","/"),
         tag=tag,
         name_prefix=name_prefix.lstrip('/'),
         digest=hexdigest,
@@ -148,7 +150,7 @@ location = "/v2/{name_prefix:s}{name:s}/manifests/{tag:s}" {{
 
             if hexdigest not in seen_digests:
                 yield '''
-location = "/v2/{name_prefix:s}{name:s}/manifests/sha256:{digest:s}" {{
+location = "/v2/{name_prefix:s}{sname:s}/manifests/sha256:{digest:s}" {{
     alias {server_root:s}/{name:s}/{tag:s}/;
     types {{ }} default_type "application/vnd.docker.distribution.manifest.v2+json";
     add_header 'Docker-Content-Digest' 'sha256:{digest:s}';
@@ -157,6 +159,7 @@ location = "/v2/{name_prefix:s}{name:s}/manifests/sha256:{digest:s}" {{
 }}
 '''.format(
         name=name,
+        sname=name.replace(":","/"),
         tag=tag,
         name_prefix=name_prefix.lstrip('/'),
         digest=hexdigest,
@@ -164,16 +167,17 @@ location = "/v2/{name_prefix:s}{name:s}/manifests/sha256:{digest:s}" {{
     )
             else:
                 yield '''
-# Digest for "{name:s}:{tag:s}" already served
+# Digest for "{sname:s}:{tag:s}" already served
 '''.format(
         name=name,
+        sname=name.replace(":","/"),
         tag=tag,
     )
 
             seen_digests.add(hexdigest)
 
         yield '''
-location ~ "/v2/{name_prefix:s}{name:s}/blobs/sha256:([a-f0-9]{{64}})" {{
+location ~ "/v2/{name_prefix:s}{sname:s}/blobs/sha256:([a-f0-9]{{64}})" {{
     alias {server_root:s}/{name:s}/;
     try_files {paths:s} =404;
 }}
@@ -181,6 +185,7 @@ location ~ "/v2/{name_prefix:s}{name:s}/blobs/sha256:([a-f0-9]{{64}})" {{
         name_prefix=name_prefix.lstrip('/'),
         server_root=server_root,
         name=name,
+        sname=name.replace(":","/"),
         paths=' '.join('{tag:s}/$1'.format(tag=tag) for tag in sorted(tags)),
     )
 
