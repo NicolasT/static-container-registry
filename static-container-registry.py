@@ -83,7 +83,7 @@ def find_images(root):
             if not mediaType in [
                     'application/vnd.docker.distribution.manifest.v2+json',
                     'application/vnd.oci.image.manifest.v1+json']:
-                LOGGER.info('Invalid mediaType %s : %s', manifest, mediaType)
+                LOGGER.info('Invalid mediaType in %s : %s', manifest, mediaType)
                 continue
 
             LOGGER.info('Found image %s:%s in %s', name, tag, curr)
@@ -153,7 +153,7 @@ location = "/v2/{name_prefix:s}{name:s}/manifests/{tag:s}" {{
                 yield '''
 location = "/v2/{name_prefix:s}{name:s}/manifests/sha256:{digest:s}" {{
     alias {server_root:s}/{name:s}/{tag:s}/;
-    types {{ }} default_type "application/vnd.docker.distribution.manifest.v2+json";
+    types {{ }} default_type "{mediaType:s}";
     add_header 'Docker-Content-Digest' 'sha256:{digest:s}';
     try_files manifest.json =404;
     error_page 404 @404_tag;
@@ -161,6 +161,7 @@ location = "/v2/{name_prefix:s}{name:s}/manifests/sha256:{digest:s}" {{
 '''.format(
         name=name,
         tag=tag,
+        mediaType=mediaType,
         name_prefix=name_prefix.lstrip('/'),
         digest=hexdigest,
         server_root=server_root,
