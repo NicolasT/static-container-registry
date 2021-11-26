@@ -83,7 +83,7 @@ def find_images(root):
             if not mediaType in [
                     'application/vnd.docker.distribution.manifest.v2+json',
                     'application/vnd.oci.image.manifest.v1+json']:
-                LOGGER.info('Invalid mediaType in %s', manifest)
+                LOGGER.info('Invalid mediaType %s : %s', manifest, mediaType)
                 continue
 
             LOGGER.info('Found image %s:%s in %s', name, tag, curr)
