@@ -79,13 +79,15 @@ def find_images(root):
                 LOGGER.info('Invalid schemaVersion in %s', manifest)
                 continue
 
-            if data.get('mediaType') != \
-                    'application/vnd.docker.distribution.manifest.v2+json':
-                LOGGER.info('Invalid mediaType in %s', manifest)
+            mediaType = data.get('mediaType')
+            if not mediaType in [
+                    'application/vnd.docker.distribution.manifest.v2+json',
+                    'application/vnd.oci.image.manifest.v1+json']:
+                LOGGER.info('Invalid mediaType %s : %s', manifest, mediaType)
                 continue
 
             LOGGER.info('Found image %s:%s in %s', name, tag, curr)
-            yield (name, tag)
+            yield (name, tag, mediaType)
 
 
 def create_config(root, server_root, name_prefix, with_constants=True,
@@ -97,13 +99,13 @@ def create_config(root, server_root, name_prefix, with_constants=True,
         return
 
     images = {}
-    for (name, tag) in find_images(root):
-        images.setdefault(name, set()).add(tag)
+    for (name, tag, mediaType) in find_images(root):
+        images.setdefault(name, {})[tag] = mediaType
 
     for (name, tags) in sorted(images.items()):
         tag_list = {
             'name': name,
-            'tags': sorted(tags),
+            'tags': sorted(tags.keys()),
         }
 
         yield '''
@@ -119,7 +121,7 @@ location = /v2/{name_prefix:s}{name:s}/tags/list {{
 
         seen_digests = set()
 
-        for tag in sorted(tags):
+        for (tag, mediaType) in sorted(tags.items()):
             manifest_file = os.path.join(root, name, tag, MANIFEST_JSON)
 
             digest = hashlib.sha256()
@@ -133,7 +135,7 @@ location = /v2/{name_prefix:s}{name:s}/tags/list {{
             yield '''
 location = "/v2/{name_prefix:s}{name:s}/manifests/{tag:s}" {{
     alias {server_root:s}/{name:s}/{tag:s}/;
-    types {{ }} default_type "application/vnd.docker.distribution.manifest.v2+json";
+    types {{ }} default_type "{mediaType:s}";
     add_header 'Docker-Content-Digest' 'sha256:{digest:s}';
     try_files manifest.json =404;
     error_page 404 @404_tag;
@@ -141,6 +143,7 @@ location = "/v2/{name_prefix:s}{name:s}/manifests/{tag:s}" {{
 '''.format(
         name=name,
         tag=tag,
+        mediaType=mediaType,
         name_prefix=name_prefix.lstrip('/'),
         digest=hexdigest,
         server_root=server_root,
@@ -181,7 +184,7 @@ location ~ "/v2/{name_prefix:s}{name:s}/blobs/sha256:([a-f0-9]{{64}})" {{
         name_prefix=name_prefix.lstrip('/'),
         server_root=server_root,
         name=name,
-        paths=' '.join('{tag:s}/$1'.format(tag=tag) for tag in sorted(tags)),
+        paths=' '.join('{tag:s}/$1'.format(tag=tag) for tag in sorted(tags.keys())),
     )
 
 

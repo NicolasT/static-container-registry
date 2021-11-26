@@ -3,6 +3,7 @@
 DOCKER=${DOCKER:-$(command -v docker || echo false)}
 SKOPEO=${SKOPEO:-$(command -v skopeo || echo false)}
 CRICTL=${CRICTL:-$(command -v crictl || echo false)}
+ORAS=${ORAS:-$(command -v oras || echo false)}
 CURL=${CURL:-$(command -v curl || echo false)}
 HARDLINK=${HARDLINK:-$(command -v hardlink || echo false)}
 
@@ -17,6 +18,7 @@ TEST_DOCKER=${TEST_DOCKER:-1}
 TEST_CONTAINERD=${TEST_CONTAINERD:-1}
 TEST_CRIO=${TEST_CRIO:-1}
 TEST_SKOPEO=${TEST_SKOPEO:-1}
+TEST_ORAS=${TEST_ORAS:-1}
 
 if [ "$TEST_DOCKER" -eq 1 ]; then
 test_docker() {
@@ -47,6 +49,14 @@ test_skopeo() {
         for image in ${AVAILABLE_IMAGES[*]}; do
                 assert "$SKOPEO --debug inspect --tls-verify=false 'docker://$REGISTRY/$image'"
         done
+}
+fi
+
+if [ "$TEST_ORAS" -eq 1 ]; then
+test_oras() {
+        assert "$ORAS pull '$REGISTRY/$AVAILABLE_FILE' -t text/plain"
+        assert "test -f test.txt"
+        assert_equals "$(cat test.txt)" "some content"
 }
 fi
 
@@ -112,6 +122,7 @@ AVAILABLE_IMAGES=(
     'alpine:3.8.4'
     'metalk8s-keepalived:latest'
 )
+AVAILABLE_FILE='file:latest'
 create_images_directory() {
         mkdir "$IMAGES" "$IMAGES/alpine" "$IMAGES/metalk8s-keepalived"
         $SKOPEO copy --format v2s2 --dest-compress \
@@ -128,6 +139,31 @@ create_images_directory() {
         $SKOPEO copy --format v2s2 --dest-compress \
                 docker://docker.io/nicolast/metalk8s-keepalived:latest \
                 "dir:$IMAGES/metalk8s-keepalived/latest"
+
+        mkdir "$IMAGES/file" "$IMAGES/file/latest"
+        echo -n '{}' > $IMAGES/file/latest/44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+        echo -n 'some content' > $IMAGES/file/latest/290f493c44f5d63d06b374d0a5abd292fae38b92cab2fae5efefe1b0e9347f56
+        cat <<EOF > $IMAGES/file/latest/manifest.json
+ {
+   "schemaVersion": 2,
+   "mediaType": "application/vnd.oci.image.manifest.v1+json",
+   "config": {
+       "mediaType": "application/vnd.oci.image.config.v1+json",
+        "digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+        "size": 2
+    },
+   "layers": [
+       {
+            "mediaType": "text/plain",
+            "digest": "sha256:290f493c44f5d63d06b374d0a5abd292fae38b92cab2fae5efefe1b0e9347f56",
+            "size": 12,
+            "annotations": {
+                "org.opencontainers.image.title": "test.txt"
+            }
+        }
+   ]
+}
+EOF
 
         $HARDLINK -c -vv "${IMAGES}"
 }
