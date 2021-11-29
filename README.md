@@ -55,7 +55,7 @@ Now we're ready to create an Nginx configuration file that can be `include`d in
 a larger configuration:
 
 ```
-$ ./static-container-registry.py ./images > registry.conf
+$ ./static_container_registry.py ./images > registry.conf
 ```
 
 The following options are available:
