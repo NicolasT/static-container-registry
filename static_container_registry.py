@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# pylint: disable=consider-using-f-string
+""" Script to generate nginx configuration to serve as container registry. """
+
 import sys
 import os.path
 import json
@@ -40,6 +43,7 @@ MANIFEST_JSON = 'manifest.json'
 
 
 def find_images(root):
+    """ Find list of images in the specified root folder. """
     LOGGER.info('Finding images in %s', root)
 
     for name in os.listdir(root):
@@ -64,10 +68,10 @@ def find_images(root):
                 LOGGER.info('No manifest file at %s', manifest)
                 continue
 
-            with open(manifest, 'r') as fd:
+            with open(manifest, 'r', encoding='utf-8') as file:
                 LOGGER.info('Attempting to load JSON data from %s', manifest)
                 try:
-                    data = json.load(fd)
+                    data = json.load(file)
                 except json.JSONDecodeError:
                     LOGGER.info('Failed to decode JSON from %s', manifest)
                     data = None
@@ -79,19 +83,29 @@ def find_images(root):
                 LOGGER.info('Invalid schemaVersion in %s', manifest)
                 continue
 
-            mediaType = data.get('mediaType')
-            if not mediaType in [
+            media_type = data.get('mediaType')
+            if not media_type in [
                     'application/vnd.docker.distribution.manifest.v2+json',
                     'application/vnd.oci.image.manifest.v1+json']:
-                LOGGER.info('Invalid mediaType in %s : %s', manifest, mediaType)
+                LOGGER.info('Invalid mediaType in %s : %s', manifest, media_type)
                 continue
 
             LOGGER.info('Found image %s:%s in %s', name, tag, curr)
-            yield (name, tag, mediaType)
+            yield (name, tag, media_type)
+
+
+def compute_digest(filename):
+    """ Compute file digest. """
+    digest = hashlib.sha256()
+    with open(filename, 'rb') as file:
+        for chunk in iter(lambda: file.read(4096), b''):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def create_config(root, server_root, name_prefix, with_constants=True,
                   only_constants=False):
+    """ Create nginx configuration snippets for the images in folder. """
     if with_constants:
         yield CONSTANTS
 
@@ -99,8 +113,8 @@ def create_config(root, server_root, name_prefix, with_constants=True,
         return
 
     images = {}
-    for (name, tag, mediaType) in find_images(root):
-        images.setdefault(name, {})[tag] = mediaType
+    for (name, tag, media_type) in find_images(root):
+        images.setdefault(name, {})[tag] = media_type
 
     for (name, tags) in sorted(images.items()):
         tag_list = {
@@ -121,21 +135,13 @@ location = /v2/{name_prefix:s}{name:s}/tags/list {{
 
         seen_digests = set()
 
-        for (tag, mediaType) in sorted(tags.items()):
-            manifest_file = os.path.join(root, name, tag, MANIFEST_JSON)
-
-            digest = hashlib.sha256()
-
-            with open(manifest_file, 'rb') as fd:
-                for chunk in iter(lambda: fd.read(4096), b''):
-                    digest.update(chunk)
-
-            hexdigest = digest.hexdigest()
+        for (tag, media_type) in sorted(tags.items()):
+            hexdigest = compute_digest(os.path.join(root, name, tag, MANIFEST_JSON))
 
             yield '''
 location = "/v2/{name_prefix:s}{name:s}/manifests/{tag:s}" {{
     alias {server_root:s}/{name:s}/{tag:s}/;
-    types {{ }} default_type "{mediaType:s}";
+    types {{ }} default_type "{media_type:s}";
     add_header 'Docker-Content-Digest' 'sha256:{digest:s}';
     try_files manifest.json =404;
     error_page 404 @404_tag;
@@ -143,7 +149,7 @@ location = "/v2/{name_prefix:s}{name:s}/manifests/{tag:s}" {{
 '''.format(
         name=name,
         tag=tag,
-        mediaType=mediaType,
+        media_type=media_type,
         name_prefix=name_prefix.lstrip('/'),
         digest=hexdigest,
         server_root=server_root,
@@ -153,7 +159,7 @@ location = "/v2/{name_prefix:s}{name:s}/manifests/{tag:s}" {{
                 yield '''
 location = "/v2/{name_prefix:s}{name:s}/manifests/sha256:{digest:s}" {{
     alias {server_root:s}/{name:s}/{tag:s}/;
-    types {{ }} default_type "{mediaType:s}";
+    types {{ }} default_type "{media_type:s}";
     add_header 'Docker-Content-Digest' 'sha256:{digest:s}';
     try_files manifest.json =404;
     error_page 404 @404_tag;
@@ -161,7 +167,7 @@ location = "/v2/{name_prefix:s}{name:s}/manifests/sha256:{digest:s}" {{
 '''.format(
         name=name,
         tag=tag,
-        mediaType=mediaType,
+        media_type=media_type,
         name_prefix=name_prefix.lstrip('/'),
         digest=hexdigest,
         server_root=server_root,
@@ -190,6 +196,7 @@ location ~ "/v2/{name_prefix:s}{name:s}/blobs/sha256:([a-f0-9]{{64}})" {{
 
 
 def main():
+    """ Main entrypoint. """
     logging.basicConfig(
         level=logging.INFO,
     )

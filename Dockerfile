@@ -9,7 +9,7 @@ RUN apk add --no-cache \
 
 VOLUME /var/lib/images
 COPY entrypoint.sh /entrypoint.sh
-COPY static-container-registry.py /static-container-registry.py
+COPY static_container_registry.py /static_container_registry.py
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
