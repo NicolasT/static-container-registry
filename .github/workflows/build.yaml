@@ -1,4 +1,4 @@
-name: static-container-registry
+name: build
 
 on: push
 
@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    
+
     - name: Set up Docker Buildk
       uses: docker/setup-buildx-action@v1
 
@@ -52,7 +52,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-  
+
     - name: Install dependencies
       run: |
         OS=xUbuntu_20.04
@@ -65,7 +65,7 @@ jobs:
         sudo apt-get update
         sudo apt-get -y install cri-o cri-o-runc cri-tools hardlink
 
-        # Fix libpcre2-posix2 package version, use the 
+        # Fix libpcre2-posix2 package version
         sudo apt-get -y install --reinstall --allow-downgrades libpcre2-posix2/$(lsb_release -cs)
 
         # Also need oras, skopeo ; but they are already installed
